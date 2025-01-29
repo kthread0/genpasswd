@@ -6,7 +6,8 @@ simple password generator written in C, originally made by [lilyyllyyllyly](http
 
 ## Dependencies
 
-- Clang >=18 (Needed for ThinLTO and CFI)
+- x86_64v3 (Modify the Makefile in case you want to define your architecture explicitly.
+- Clang >=19 (Needed for ThinLTO and CFI)
 - libsodium
 - ncurses
 
