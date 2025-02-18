@@ -14,7 +14,7 @@
  * Linked list of all calls to malloc.
  */
 struct allocation_node {
-		struct allocation_node *next;
+	struct allocation_node *next;
 };
 
 static struct allocation_node *alloc_head = NULL;
@@ -83,10 +83,10 @@ int main(int argc, char *argv[]) {
 			quiet = 1;
 		}
 	}
-	dirty();
+
 	unsigned char k[crypto_generichash_KEYBYTES_MAX]; // Key
 	unsigned char h[crypto_generichash_BYTES_MAX];	  // Hash output
-	unsigned char m[BUFFER_SIZE];					  // Message
+	unsigned char m[BUFFER_SIZE];			  // Message
 	size_t mlen = 0;
 
 	if (sodium_init() < 0) {
