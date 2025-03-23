@@ -13,7 +13,7 @@ FLAGS = -march=x86-64-v3 -O3 -flto=thin -pipe -fno-plt -fexceptions \
 
 SANITIZE = -fsanitize=cfi -fvisibility=hidden
 
-LIBS = -pthreads -lsodium -lmimalloc
+LIBS = -pthreads -lsodium
 
 build: $(FILES)
 	$(CC) $(FILES) $(FLAGS) $(SANITIZE) $(LIBS) -o genpasswd
