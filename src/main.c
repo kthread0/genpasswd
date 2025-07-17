@@ -1,119 +1,82 @@
-#include <fcntl.h>
-#include <getopt.h>
+#include <pthread.h>
 #include <sodium.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <unistd.h>
 
 #define BUFFER_SIZE 256
 
-/*
- * Linked list of all calls to malloc.
- */
-struct allocation_node {
-  struct allocation_node *next;
-};
+typedef struct _thread_data_t {
+		int tid;
+		double stuff;
+} thread_data_t;
 
-static struct allocation_node *alloc_head = NULL;
-
-/*
- * Free all mallocs within the linked list.
- */
-static void free_allocations(void) {
-  struct allocation_node *tmp;
-  struct allocation_node *n;
-
-  n = alloc_head;
-  alloc_head = NULL;
-
-  while (n != NULL) {
-    tmp = n->next;
-    free(n);
-    n = tmp;
-  }
-  // Turns out the stack wasn't fully zeroed out, so we are forcing it.
-  void sodium_stackzero(const size_t tmp);
-  void sodium_stackzero(const size_t n);
-}
-
-/*
- * Track all mallocs so it will be freed later.
- */
-static void *malloc_wrapper(size_t size) {
-  struct allocation_node *node;
-  void *p;
-
-  node = malloc(sizeof *node + size);
-  if (node == NULL) {
-    abort();
-  }
-
-  node->next = alloc_head;
-  alloc_head = node;
-
-  p = node + 1;
-  return p;
-}
+double shared;
+pthread_mutex_t lock;
 
 static char *print_b64(const void *buf, const size_t len) {
-  const unsigned char *b;
-  char *p;
-  b = buf;
-  p = malloc_wrapper(len * 8);
-  return sodium_bin2base64(p, len * 2 + 1, b, len,
-                           sodium_base64_VARIANT_ORIGINAL);
+	const unsigned char *b;
+	char *p;
+	b = buf;
+	p = malloc(len * 4);
+	return sodium_bin2base64(p, len * 2, b, len,
+							 sodium_base64_VARIANT_ORIGINAL);
 }
 
-/*
- * Dirty STACK to detect zeroing errors
- */
-static void dirty(void) {
-  unsigned char memory[BUFFER_SIZE];
-  memset(memory, 'c', sizeof memory);
-  void sodium_stackzero(const size_t memory);
+int generate(void) {
+	unsigned char k[crypto_generichash_KEYBYTES_MAX]; // Key
+	unsigned char h[crypto_generichash_BYTES_MAX];	  // Hash output
+	unsigned char m[BUFFER_SIZE];					  // Message
+	randombytes_buf(k, sizeof k);
+	randombytes_buf(h, sizeof h);
+	randombytes_buf(m, sizeof m);
+	size_t mlen = 0;
+	crypto_generichash(h, sizeof h, m, mlen, k, sizeof k);
+	printf("%s\n", print_b64(h, sizeof h));
+	return 0;
 }
 
-int main(int argc, char *argv[]) {
-  int quiet = 0;
-  for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "--quiet") == 0 || strcmp(argv[i], "-q") == 0) {
-      quiet = 1;
-    }
-  }
+void *threading(void *arg) {
+	thread_data_t *data = (thread_data_t *)arg;
+	if (sodium_init() < 0) {
+		perror(
+			"CRITICAL: libsodium couldn't be initialized, not safe to use!\n");
+		exit(EXIT_FAILURE);
+	} else {
+		pthread_mutex_lock(&lock);
+		shared += data->stuff;
+		generate();
+		pthread_mutex_unlock(&lock);
+		pthread_exit(NULL);
+		exit(EXIT_SUCCESS);
+	}
+}
 
-  unsigned char k[crypto_generichash_KEYBYTES_MAX]; // Key
-  unsigned char h[crypto_generichash_BYTES_MAX];    // Hash output
-  unsigned char m[BUFFER_SIZE];                     // Message
-  size_t mlen = 0;
+int main(void) {
+	long num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+	if (num_cores == -1) {
+		fprintf(stderr, "Could not detect number of cores\n");
+		return 1;
+	}
+	pthread_t *threads = malloc(num_cores * sizeof(pthread_t));
+	thread_data_t thr_data[num_cores];
+	int i, rc;
+	shared = 0;
+	pthread_mutex_init(&lock, NULL);
+	/* create threads */
+	for (i = 0; i < num_cores; ++i) {
+		thr_data[i].tid = i;
+		// thr_data[i].stuff = threads;
+		if ((rc = pthread_create(&threads[i], NULL, threading, &thr_data[i]))) {
+			fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
+			return EXIT_FAILURE;
+		}
+	}
 
-  if (sodium_init() < 0) {
-    printf("\33[0:31m\\]FATAL ERROR: could NOT initialize "
-           "cryptographic "
-           "engine, aborting.\33[0m\\]\n"); // IT IS NOT SAFE TO RUN
-    return 1;
-  }
-  if (!quiet) {
-    printf("\033[22;34mCryptographic engine started "
-           "successfully!\033[0m\n");
-  }
+	for (i = 0; i < num_cores; ++i) {
+		pthread_join(threads[i], NULL);
+	}
 
-  sodium_memzero(k, sizeof k);
-  sodium_memzero(h, sizeof h);
-  sodium_memzero(m, sizeof m);
-
-  randombytes_buf(k, sizeof k);
-  randombytes_buf(h, sizeof h);
-  randombytes_buf(m, sizeof m);
-
-  crypto_generichash(h, sizeof h, m, mlen, k, sizeof k);
-  if (!quiet) {
-    printf("Password: %s\n", print_b64(h, sizeof h));
-  } else {
-    printf("%s\n", print_b64(h, sizeof h));
-  }
-
-  atexit(&dirty);
-  atexit(&free_allocations);
-  return 0;
+	return 0;
 }
