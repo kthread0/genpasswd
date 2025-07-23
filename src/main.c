@@ -9,7 +9,7 @@
 
 typedef struct _thread_data_t {
 		int tid;
-		double stuff;
+		pthread_t stuff;
 } thread_data_t;
 
 double shared;
@@ -67,7 +67,7 @@ int main(void) {
 	/* create threads */
 	for (i = 0; i < num_cores; ++i) {
 		thr_data[i].tid = i;
-		// thr_data[i].stuff = threads;
+		thr_data[i].stuff = *threads;
 		if ((rc = pthread_create(&threads[i], NULL, threading, &thr_data[i]))) {
 			fprintf(stderr, "error: pthread_create, rc: %d\n", rc);
 			return EXIT_FAILURE;

@@ -1,15 +1,14 @@
 FILES := $(wildcard src/*.c)
 
-FLAGS = -march=native -O3 -flto -pipe -fno-plt -fexceptions \
-        -Wall -Wextra -Wpedantic -Werror \
-        -fstack-clash-protection -fcf-protection \
-	-Wl,-O1 -Wl,--sort-common -Wl,--as-needed -Wl,-z,relro -Wl,-z,now \
-        -Wl,-z,pack-relative-relocs
+CFLAGS += -march=native -O3 -flto -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstrict-flex-arrays=3 -fstack-clash-protection -fstack-protector-strong -fexceptions -fPIE -pie -Wtrampolines -fzero-init-padding-bits=all -ftrivial-auto-var-init=zero -fcf-protection=full
+LDFLAGS += -Wl,-z,nodlopen -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now -Wl,--as-needed -Wl,--no-copy-dt-needed-entries
 
-LIBS = -lpthread -pthread -lsodium
+WARNINGS += -Wall -Wpedantic -Werror
+
+LIBS += -lpthread -pthread -lsodium
 
 build: $(FILES)
-	$(CC) $(FILES) $(FLAGS) $(LIBS) -o genpasswd
+	$(CC) $(FILES) $(WARNINGS) $(CFLAGS) $(LDFLAGS) $(LIBS) -o genpasswd
 
 clean:
 	rm -vf genpasswd
