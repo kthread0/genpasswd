@@ -31,6 +31,11 @@ static const char *ALPHANUMERIC_NO_AMBIGUOUS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefgh
 static const char *ALPHANUMERIC_SYMBOLS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+-=[]{}|;:,.<>?";
 static const char *ALPHANUMERIC_SYMBOLS_NO_AMBIGUOUS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%^&*()_+-=[]{}|;:,.<>?";
 
+#define ALPHANUMERIC_LEN 62
+#define ALPHANUMERIC_NO_AMBIGUOUS_LEN 54
+#define ALPHANUMERIC_SYMBOLS_LEN 84
+#define ALPHANUMERIC_SYMBOLS_NO_AMBIGUOUS_LEN 76
+
 static void print_usage(const char *progname) {
 	printf("Usage: %s [OPTIONS]\n\n", progname);
 	printf("Generate cryptographically secure random passwords.\n\n");
@@ -95,7 +100,10 @@ static int generate_base64(int length) {
 	randombytes_buf(bin_buf, bin_len);
 	sodium_bin2base64(b64_buf, b64_buf_len, bin_buf, bin_len, sodium_base64_VARIANT_ORIGINAL);
 	
-	b64_buf[length] = '\0';
+	size_t actual_len = strlen(b64_buf);
+	if (actual_len >= (size_t)length) {
+		b64_buf[length] = '\0';
+	}
 	printf("%s\n", b64_buf);
 	
 	sodium_free(bin_buf);
@@ -141,7 +149,10 @@ static int generate_hex(int length) {
 	randombytes_buf(bin_buf, bin_len);
 	sodium_bin2hex(hex_buf, hex_buf_len, bin_buf, bin_len);
 	
-	hex_buf[length] = '\0';
+	size_t actual_len = strlen(hex_buf);
+	if (actual_len >= (size_t)length) {
+		hex_buf[length] = '\0';
+	}
 	printf("%s\n", hex_buf);
 	
 	sodium_free(bin_buf);
@@ -157,19 +168,19 @@ static int generate_password(const options_t *opts) {
 		case CHARSET_ALPHANUMERIC:
 			if (opts->exclude_ambiguous) {
 				return generate_charset(opts->length, ALPHANUMERIC_NO_AMBIGUOUS, 
-					strlen(ALPHANUMERIC_NO_AMBIGUOUS));
+					ALPHANUMERIC_NO_AMBIGUOUS_LEN);
 			} else {
 				return generate_charset(opts->length, ALPHANUMERIC, 
-					strlen(ALPHANUMERIC));
+					ALPHANUMERIC_LEN);
 			}
 		
 		case CHARSET_ALPHANUMERIC_SYMBOLS:
 			if (opts->exclude_ambiguous) {
 				return generate_charset(opts->length, ALPHANUMERIC_SYMBOLS_NO_AMBIGUOUS,
-					strlen(ALPHANUMERIC_SYMBOLS_NO_AMBIGUOUS));
+					ALPHANUMERIC_SYMBOLS_NO_AMBIGUOUS_LEN);
 			} else {
 				return generate_charset(opts->length, ALPHANUMERIC_SYMBOLS,
-					strlen(ALPHANUMERIC_SYMBOLS));
+					ALPHANUMERIC_SYMBOLS_LEN);
 			}
 		
 		case CHARSET_HEX:
