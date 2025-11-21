@@ -1,4 +1,6 @@
+#include <errno.h>
 #include <getopt.h>
+#include <limits.h>
 #include <sodium.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,6 +57,25 @@ static void print_version(void) {
 	printf("Cryptographically secure password generator using libsodium\n");
 }
 
+static int parse_int(const char *str, int *result, const char *param_name) {
+	char *endptr;
+	errno = 0;
+	long val = strtol(str, &endptr, 10);
+	
+	if (errno == ERANGE || val > INT_MAX || val < INT_MIN) {
+		fprintf(stderr, "Error: %s value out of range\n", param_name);
+		return -1;
+	}
+	
+	if (endptr == str || *endptr != '\0') {
+		fprintf(stderr, "Error: %s must be a valid integer\n", param_name);
+		return -1;
+	}
+	
+	*result = (int)val;
+	return 0;
+}
+
 static int generate_base64(int length) {
 	size_t bin_len = (length * 3) / 4 + 1;
 	unsigned char *bin_buf = sodium_malloc(bin_len);
@@ -83,15 +104,8 @@ static int generate_base64(int length) {
 }
 
 static int generate_charset(int length, const char *charset, size_t charset_len) {
-	unsigned char *indices = sodium_malloc(length);
-	if (!indices) {
-		fprintf(stderr, "Error: Memory allocation failed\n");
-		return 1;
-	}
-	
 	char *password = sodium_malloc(length + 1);
 	if (!password) {
-		sodium_free(indices);
 		fprintf(stderr, "Error: Memory allocation failed\n");
 		return 1;
 	}
@@ -104,7 +118,6 @@ static int generate_charset(int length, const char *charset, size_t charset_len)
 	
 	printf("%s\n", password);
 	
-	sodium_free(indices);
 	sodium_free(password);
 	return 0;
 }
@@ -192,7 +205,9 @@ int main(int argc, char *argv[]) {
 	while ((opt = getopt_long(argc, argv, "l:n:c:xhv", long_options, &option_index)) != -1) {
 		switch (opt) {
 			case 'l':
-				opts.length = atoi(optarg);
+				if (parse_int(optarg, &opts.length, "Length") != 0) {
+					return EXIT_FAILURE;
+				}
 				if (opts.length <= 0 || opts.length > MAX_PASSWORD_LENGTH) {
 					fprintf(stderr, "Error: Length must be between 1 and %d\n", MAX_PASSWORD_LENGTH);
 					return EXIT_FAILURE;
@@ -200,7 +215,9 @@ int main(int argc, char *argv[]) {
 				break;
 			
 			case 'n':
-				opts.count = atoi(optarg);
+				if (parse_int(optarg, &opts.count, "Count") != 0) {
+					return EXIT_FAILURE;
+				}
 				if (opts.count <= 0) {
 					fprintf(stderr, "Error: Count must be positive\n");
 					return EXIT_FAILURE;
