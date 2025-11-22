@@ -5,7 +5,7 @@ LDFLAGS += -Wl,-z,nodlopen -Wl,-z,noexecstack -Wl,-z,relro -Wl,-z,now -Wl,--as-n
 
 WARNINGS += -Wall -Wpedantic -Werror
 
-LIBS += -lpthread -pthread -lsodium
+LIBS += -lsodium
 
 build: $(FILES)
 	$(CC) $(FILES) $(WARNINGS) $(CFLAGS) $(LDFLAGS) $(LIBS) -o genpasswd
